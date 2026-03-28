@@ -1,0 +1,61 @@
+# openenv.yaml
+name: email-triage-env
+version: 1.0.0
+description: >
+  A real-world email triage environment where AI agents classify,
+  reply to, escalate, and route customer support emails. Simulates
+  an enterprise customer support inbox with graded partial rewards.
+author: your-username
+domain: customer-support
+tags:
+  - email
+  - triage
+  - nlp
+  - customer-support
+  - openenv
+
+tasks:
+  - id: task_1
+    name: Email Classification
+    difficulty: easy
+    description: Classify each email into the correct category
+    max_steps: 10
+
+  - id: task_2
+    name: Reply Drafting
+    difficulty: medium
+    description: Draft professional replies that address key concerns
+    max_steps: 15
+
+  - id: task_3
+    name: Full Inbox Triage
+    difficulty: hard
+    description: Classify, escalate, and route 10 emails correctly
+    max_steps: 25
+
+observation_space:
+  type: object
+  fields:
+    - inbox: list of Email objects
+    - current_email: Email
+    - step_number: int
+    - task_id: str
+    - context: dict
+
+action_space:
+  type: object
+  fields:
+    - action_type: enum[classify, reply, escalate, archive, merge]
+    - classification: str (optional)
+    - reply_text: str (optional)
+    - escalation_reason: str (optional)
+
+reward:
+  range: [0.0, 1.0]
+  type: continuous
+  partial_credit: true
+
+endpoints:
+  reset: POST /reset/{task_id}
+  step:  POST /step/{task_id}
+  state: GET  /state/{task_id}
