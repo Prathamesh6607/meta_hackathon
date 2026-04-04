@@ -1,0 +1,82 @@
+[
+  {
+    "subject": "Invoice #83810 - payment failed",
+    "body": "Hi, my card ending 0138 was declined. My order reference is 06CB0FB3. Please help urgently.",
+    "sender": "jennifermiles@example.com",
+    "true_category": "billing",
+    "true_priority": "high",
+    "id": "email_000"
+  },
+  {
+    "subject": "Invoice #28893 - payment failed",
+    "body": "Hi, my card ending 5110 was declined. My order reference is D8F56413. Please help urgently.",
+    "sender": "cassandra07@example.net",
+    "true_category": "billing",
+    "true_priority": "high",
+    "id": "email_001"
+  },
+  {
+    "subject": "Cannot login to my account",
+    "body": "Hello, I have been trying to login since 1977-01-08 and keep getting error 403. My username is smiller.",
+    "sender": "barbara10@example.net",
+    "true_category": "technical_support",
+    "true_priority": "medium",
+    "id": "email_002"
+  },
+  {
+    "subject": "Focused zero administration frame - LIMITED OFFER!!!",
+    "body": "Click here NOW to claim your prize! http://www.james.com/",
+    "sender": "mitchellclark@yahoo.com",
+    "true_category": "spam",
+    "true_priority": "low",
+    "id": "email_003"
+  },
+  {
+    "subject": "Total systemic project - LIMITED OFFER!!!",
+    "body": "Click here NOW to claim your prize! http://www.daniel.net/",
+    "sender": "gabriellecameron@gmail.com",
+    "true_category": "spam",
+    "true_priority": "low",
+    "id": "email_004"
+  },
+  {
+    "subject": "Focused 5thgeneration workforce - LIMITED OFFER!!!",
+    "body": "Click here NOW to claim your prize! https://jones-gentry.org/",
+    "sender": "jason76@hotmail.com",
+    "true_category": "spam",
+    "true_priority": "low",
+    "id": "email_005"
+  },
+  {
+    "subject": "Invoice #60142 - payment failed",
+    "body": "Hi, my card ending 2874 was declined. My order reference is DC713D96. Please help urgently.",
+    "sender": "hernandezernest@example.net",
+    "true_category": "billing",
+    "true_priority": "high",
+    "id": "email_006"
+  },
+  {
+    "subject": "Invoice #55333 - payment failed",
+    "body": "Hi, my card ending 4511 was declined. My order reference is 74273CA3. Please help urgently.",
+    "sender": "mckaynancy@example.com",
+    "true_category": "billing",
+    "true_priority": "high",
+    "id": "email_007"
+  },
+  {
+    "subject": "Terrible experience with your product",
+    "body": "I purchased Profit-focused well-modulated conglomeration on 1998-07-23 and it broke. I demand a full refund of $4.89.",
+    "sender": "ericfarmer@example.net",
+    "true_category": "complaint",
+    "true_priority": "high",
+    "id": "email_008"
+  },
+  {
+    "subject": "Invoice #69514 - payment failed",
+    "body": "Hi, my card ending 5435 was declined. My order reference is 913E4DE2. Please help urgently.",
+    "sender": "millertodd@example.org",
+    "true_category": "billing",
+    "true_priority": "high",
+    "id": "email_009"
+  }
+]

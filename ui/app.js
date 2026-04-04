@@ -28,6 +28,15 @@ const refs = {
   resetBtn: document.getElementById("resetBtn"),
   autoBtn: document.getElementById("autoBtn"),
   runEpisodeBtn: document.getElementById("runEpisodeBtn"),
+  apiKeyInput: document.getElementById("apiKeyInput"),
+  modelInput: document.getElementById("modelInput"),
+  useApiCheckbox: document.getElementById("useApiCheckbox"),
+  supportSearchInput: document.getElementById("supportSearchInput"),
+  supportSearchTopK: document.getElementById("supportSearchTopK"),
+  supportSearchBtn: document.getElementById("supportSearchBtn"),
+  supportSearchClearBtn: document.getElementById("supportSearchClearBtn"),
+  supportSearchResults: document.getElementById("supportSearchResults"),
+  supportStats: document.getElementById("supportStats"),
   submitActionBtn: document.getElementById("submitActionBtn"),
   statusText: document.getElementById("statusText"),
   observationView: document.getElementById("observationView"),
@@ -322,6 +331,7 @@ function buildFinalOutcomeText() {
   const reward = payload.reward || {};
   const traces = state.observation?.tool_traces || [];
   const context = state.observation?.context || {};
+  const recommendation = payload.support_recommendation || {};
 
   const lines = [
     "Status: Done",
@@ -370,11 +380,141 @@ function buildFinalOutcomeText() {
     lines.push(`- system_result: ${resultText}`);
   }
 
+  if (Object.keys(recommendation).length > 0) {
+    lines.push("", "Support Recommendation:");
+    lines.push(`- suggested_response: ${recommendation.suggested_response || "N/A"}`);
+    lines.push(`- pitch_note: ${recommendation.pitch_note || "N/A"}`);
+    const matches = recommendation.matched_cases || [];
+    if (matches.length > 0) {
+      lines.push(`- matched_cases: ${matches.map((match) => `${match.record_id} (${match.label})`).join(', ')}`);
+    }
+    if (recommendation.index_stats) {
+      lines.push(`- index_stats: ${safeJson(recommendation.index_stats)}`);
+    }
+  }
+
   return lines.join("\n");
 }
 
 function renderOutcome() {
   refs.outcomeView.textContent = buildFinalOutcomeText();
+}
+
+function renderSupportSearchResults(matches, query) {
+  refs.supportSearchResults.innerHTML = "";
+
+  if (!query) {
+    refs.supportSearchResults.innerHTML = '<div class="search-empty">Enter a query to search the support corpus.</div>';
+    return;
+  }
+
+  if (!Array.isArray(matches) || matches.length === 0) {
+    refs.supportSearchResults.innerHTML = '<div class="search-empty">No matches found for that query.</div>';
+    return;
+  }
+
+  matches.forEach((match, index) => {
+    const card = document.createElement("article");
+    card.className = "search-card";
+
+    const head = document.createElement("div");
+    head.className = "search-card-head";
+    const left = document.createElement("span");
+    left.textContent = `#${index + 1} ${match.record_id || "unknown"}`;
+    const right = document.createElement("span");
+    right.textContent = `${match.label || "unknown"} • score ${Number(match.score || 0).toFixed(3)}`;
+    head.appendChild(left);
+    head.appendChild(right);
+
+    const meta = document.createElement("div");
+    meta.className = "search-card-meta";
+    meta.textContent = `source: ${match.source || "N/A"}`;
+
+    const snippet = document.createElement("div");
+    snippet.className = "search-card-snippet";
+    snippet.textContent = match.snippet || "";
+
+    const metadata = document.createElement("div");
+    metadata.className = "search-card-metadata";
+    metadata.textContent = match.metadata ? safeJson(match.metadata) : "{}";
+
+    card.appendChild(head);
+    card.appendChild(meta);
+    card.appendChild(snippet);
+    card.appendChild(metadata);
+    refs.supportSearchResults.appendChild(card);
+  });
+}
+
+function renderSupportStats(stats) {
+  refs.supportStats.innerHTML = "";
+  if (!stats) {
+    refs.supportStats.innerHTML = '<div class="search-empty">Corpus stats unavailable.</div>';
+    return;
+  }
+
+  const cards = [
+    ["Records", String(stats.records ?? 0)],
+    ["Unique Tokens", String(stats.unique_tokens ?? 0)],
+    ["Top Labels", (stats.top_labels || []).slice(0, 3).map((item) => `${item.label}:${item.count}`).join(" | ") || "N/A"],
+  ];
+
+  cards.forEach(([label, value]) => {
+    const card = document.createElement("div");
+    card.className = "support-stat";
+    const k = document.createElement("div");
+    k.className = "k";
+    k.textContent = label;
+    const v = document.createElement("div");
+    v.className = "v";
+    v.textContent = value;
+    card.appendChild(k);
+    card.appendChild(v);
+    refs.supportStats.appendChild(card);
+  });
+}
+
+async function loadSupportStats() {
+  const resp = await fetch("/support/stats");
+  if (!resp.ok) {
+    throw new Error(`HTTP ${resp.status}`);
+  }
+  const payload = await resp.json();
+  renderSupportStats(payload);
+}
+
+async function runSupportSearch() {
+  const query = refs.supportSearchInput.value.trim();
+  const topK = asInt(refs.supportSearchTopK.value, 3);
+
+  if (!query) {
+    renderSupportSearchResults([], query);
+    setStatus("Enter a search query first.");
+    return;
+  }
+
+  const resp = await fetch("/support/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query, top_k: topK }),
+  });
+
+  if (!resp.ok) {
+    let detail = `HTTP ${resp.status}`;
+    try {
+      const payload = await resp.json();
+      if (payload?.detail) {
+        detail = payload.detail;
+      }
+    } catch (_e) {
+      // Ignore malformed error bodies.
+    }
+    throw new Error(detail);
+  }
+
+  const payload = await resp.json();
+  renderSupportSearchResults(payload.matches || [], payload.query || query);
+  setStatus(`Search complete for "${query}".`);
 }
 
 function renderAll() {
@@ -554,6 +694,54 @@ async function apiStep(action) {
   renderAll();
 }
 
+function getAutoStepOptions() {
+  return {
+    api_key: refs.apiKeyInput.value.trim() || null,
+    model_name: refs.modelInput.value.trim() || null,
+    use_api: Boolean(refs.useApiCheckbox.checked),
+  };
+}
+
+async function apiAutoStep() {
+  const resp = await fetch(`/auto-step/${state.taskId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(getAutoStepOptions()),
+  });
+  if (!resp.ok) {
+    let detail = `HTTP ${resp.status}`;
+    try {
+      const payload = await resp.json();
+      if (payload?.detail) {
+        detail = payload.detail;
+      }
+    } catch (_e) {
+      // Ignore malformed error bodies.
+    }
+    throw new Error(detail);
+  }
+
+  const payload = await resp.json();
+  const action = payload.action_used || { action_type: "unknown" };
+  state.observation = payload.observation;
+  state.lastReward = Number(payload.reward?.value || 0);
+  state.totalReward += state.lastReward;
+  state.done = Boolean(payload.done);
+  state.steps += 1;
+  state.lastPayload = payload;
+  state.lastAction = action;
+
+  state.timeline.unshift({
+    step: state.steps,
+    action: action.action_type,
+    desc: buildTimelineText(action, payload),
+    error: Boolean(state.observation?.last_action_error),
+  });
+
+  setStatus(`Step ${state.steps} complete. Reward ${state.lastReward.toFixed(3)}.`);
+  renderAll();
+}
+
 async function runEpisode() {
   if (!state.observation || state.done) {
     await apiReset();
@@ -564,11 +752,7 @@ async function runEpisode() {
     if (state.done) {
       break;
     }
-    const autoAction = inferAutoAction();
-    if (!autoAction) {
-      break;
-    }
-    await apiStep(autoAction);
+    await apiAutoStep();
     await new Promise((resolve) => setTimeout(resolve, 240));
   }
 
@@ -608,12 +792,10 @@ refs.submitActionBtn.addEventListener("click", async () => {
 
 refs.autoBtn.addEventListener("click", async () => {
   try {
-    const action = inferAutoAction();
-    if (!action) {
-      setStatus("No observation yet. Reset first.");
-      return;
+    if (!state.observation) {
+      await apiReset();
     }
-    await apiStep(action);
+    await apiAutoStep();
   } catch (err) {
     setStatus(`Error: ${err.message}`);
   }
@@ -627,9 +809,25 @@ refs.runEpisodeBtn.addEventListener("click", async () => {
   }
 });
 
+refs.supportSearchBtn.addEventListener("click", async () => {
+  try {
+    await runSupportSearch();
+  } catch (err) {
+    setStatus(`Search error: ${err.message}`);
+  }
+});
+
+refs.supportSearchClearBtn.addEventListener("click", () => {
+  refs.supportSearchInput.value = "";
+  refs.supportSearchResults.innerHTML = '<div class="search-empty">Enter a query to search the support corpus.</div>';
+  setStatus("Search cleared.");
+});
+
 (async function init() {
   refs.taskSelect.value = state.taskId;
+  refs.supportSearchResults.innerHTML = '<div class="search-empty">Enter a query to search the support corpus.</div>';
   try {
+    await loadSupportStats();
     await apiReset();
   } catch (err) {
     setStatus(`Boot failed: ${err.message}`);

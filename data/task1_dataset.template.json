@@ -1,0 +1,20 @@
+[
+  {
+    "email_id": "rw_em_0001",
+    "sender": "customer@example.com",
+    "subject": "Package delayed for ORD-10001",
+    "body": "My package is late. Please help.",
+    "category": "Shipping Delay",
+    "priority": "Normal",
+    "order_id": "ORD-10001"
+  },
+  {
+    "email_id": "rw_em_0002",
+    "sender": "buyer@example.com",
+    "subject": "Defective item arrived",
+    "body": "The item is broken and I need a refund.",
+    "category": "Refund Request",
+    "priority": "Urgent",
+    "order_id": "ORD-10002"
+  }
+]

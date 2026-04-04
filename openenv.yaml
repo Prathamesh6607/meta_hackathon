@@ -2,58 +2,73 @@
 name: email-triage-env
 version: 1.0.0
 description: >
-  A real-world email triage environment where AI agents classify,
-  reply to, escalate, and route customer support emails. Simulates
-  an enterprise customer support inbox with graded partial rewards.
+  A Tier-2 customer support benchmark where agents must triage raw emails,
+  apply policy correctly, and resolve defective-item tickets using multiple
+  system/tool calls.
 author: your-username
 domain: customer-support
 tags:
   - email
   - triage
-  - nlp
-  - customer-support
+  - policy-reasoning
+  - workflow-execution
   - openenv
 
 tasks:
   - id: task_1
-    name: Email Classification
+    name: Email Triage
     difficulty: easy
-    description: Classify each email into the correct category
-    max_steps: 10
+    description: Classify issue category, assign priority, and extract Order_ID
+    max_steps: 8
 
   - id: task_2
-    name: Reply Drafting
+    name: Policy-Based Support Response
     difficulty: medium
-    description: Draft professional replies that address key concerns
-    max_steps: 15
+    description: Query policy before drafting a policy-correct response
+    max_steps: 4
 
   - id: task_3
-    name: Full Inbox Triage
+    name: Multi-System Resolution
     difficulty: hard
-    description: Classify, escalate, and route 10 emails correctly
-    max_steps: 25
+    description: Resolve defective-item tickets with order and inventory checks
+    max_steps: 6
 
 observation_space:
   type: object
   fields:
-    - inbox: list of Email objects
-    - current_email: Email
-    - step_number: int
     - task_id: str
-    - context: dict
+    - step_number: int
+    - inbox: list[SupportEmail] for task_1
+    - current_email: SupportEmail for task_1
+    - ticket: SupportTicket for task_2/task_3
+    - available_actions: list[str]
+    - tool_traces: list[ToolTrace]
+    - context: dict[str, any]
+    - last_action_error: optional str
 
 action_space:
   type: object
   fields:
-    - action_type: enum[classify, reply, escalate, archive, merge]
-    - classification: str (optional)
-    - reply_text: str (optional)
-    - escalation_reason: str (optional)
+    - action_type: enum[classify_email, query_policy, draft_response, query_order_db, query_inventory, ship_replacement, issue_refund]
+    - category: enum optional (task_1)
+    - priority: enum optional (task_1)
+    - order_id: str optional (task_1/task_3)
+    - policy_question: str optional (task_2)
+    - response_text: str optional (task_2)
+    - sku: str optional (task_3)
+    - reason: str optional (task_3)
 
 reward:
   range: [0.0, 1.0]
   type: continuous
   partial_credit: true
+  grading:
+    task_1: "0.33 category + 0.33 priority + 0.34 order_id"
+    task_2: "0.5 query_policy before answer + 0.5 policy-correct outcome"
+    task_3: "0.2 query_order_db + 0.2 query_inventory + 0.6 correct final action"
+  fail_conditions:
+    - "refund issued when inventory was available"
+    - "replacement shipped for non-existent order"
 
 endpoints:
   reset: POST /reset/{task_id}

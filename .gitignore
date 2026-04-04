@@ -2,3 +2,6 @@
 __pycache__/
 venv/
 .venv/
+datasets/inbox_1m_train.csv
+datasets/inbox_vast_100k.csv
+datasets/inbox_vast_100k.jsonl

@@ -1,44 +1,85 @@
 # env/models.py
-from pydantic import BaseModel
-from typing import Optional, List, Literal
+from __future__ import annotations
+
+from typing import Any, Dict, List, Literal, Optional
+
+from pydantic import BaseModel, Field
 
 
-class Email(BaseModel):
-    """A single email in the inbox."""
+CategoryLabel = Literal[
+    'Refund Request',
+    'Shipping Delay',
+    'Account Access',
+    'Product Defect',
+    'Billing Issue',
+    'General Inquiry',
+]
+PriorityLabel = Literal['Low', 'Normal', 'Urgent']
+ActionType = Literal[
+    'classify_email',
+    'query_policy',
+    'draft_response',
+    'query_order_db',
+    'query_inventory',
+    'ship_replacement',
+    'issue_refund',
+]
+
+
+class SupportEmail(BaseModel):
     id: str
+    sender: str
     subject: str
     body: str
-    sender: str
-    category: Optional[str] = None      # e.g. billing, support, spam
-    priority: Optional[str] = None      # e.g. high, medium, low
+
+
+class SupportTicket(BaseModel):
+    ticket_id: str
+    customer_name: str
+    customer_email: str
+    subject: str
+    message: str
+    reported_order_id: Optional[str] = None
+
+
+class ToolTrace(BaseModel):
+    tool_name: str
+    request: Dict[str, Any]
+    result: Dict[str, Any]
 
 
 class Observation(BaseModel):
     """What the agent sees at each step."""
-    task_id: str                         # which of the 3 tasks we are on
-    step_number: int                     # how many steps taken so far
-    inbox: List[Email]                   # all emails in the inbox
-    current_email: Optional[Email]       # the specific email to act on
-    context: dict                        # extra info like emails_remaining
-    last_action_error: Optional[str] = None  # populated if last action failed
+    task_id: str
+    step_number: int
+    inbox: List[SupportEmail] = Field(default_factory=list)
+    current_email: Optional[SupportEmail] = None
+    ticket: Optional[SupportTicket] = None
+    available_actions: List[ActionType]
+    tool_traces: List[ToolTrace] = Field(default_factory=list)
+    context: Dict[str, Any] = Field(default_factory=dict)
+    last_action_error: Optional[str] = None
 
 
 class Action(BaseModel):
-    """What the agent can do."""
-    action_type: Literal[
-        'classify',   # label this email with a category
-        'reply',      # draft a reply
-        'escalate',   # mark as urgent, flag for human
-        'archive',    # remove from active inbox
-        'merge'       # combine with a related thread
-    ]
-    classification: Optional[str] = None      # for classify action
-    reply_text: Optional[str] = None           # for reply action
-    escalation_reason: Optional[str] = None   # for escalate action
+    """Single structured action from the agent."""
+    action_type: ActionType
+
+    # Task 1 fields
+    category: Optional[CategoryLabel] = None
+    priority: Optional[PriorityLabel] = None
+    order_id: Optional[str] = None
+
+    # Task 2 fields
+    policy_question: Optional[str] = None
+    response_text: Optional[str] = None
+
+    # Task 3 fields
+    sku: Optional[str] = None
+    reason: Optional[str] = None
 
 
 class Reward(BaseModel):
-    """The score after an action."""
-    value: float          # 0.0 to 1.0 — the actual reward
-    breakdown: dict       # e.g. {accuracy: 0.8, tone: 0.6}
-    feedback: str         # human-readable explanation of the score
+    value: float
+    breakdown: Dict[str, float]
+    feedback: str

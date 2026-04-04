@@ -1,0 +1,23 @@
+{
+  "ticket": {
+    "ticket_id": "tkt_policy_rw_001",
+    "customer_id": "cus_1001",
+    "order_id": "ORD-20001",
+    "issue_type": "Return Eligibility",
+    "message": "I received this 45 days ago, can I still return it?"
+  },
+  "policy_db": {
+    "returns": "Returns are accepted within 30 days of delivery. After 30 days, the return is declined.",
+    "warranty": "Defects within 1 year are eligible for replacement."
+  },
+  "expected": {
+    "required_keywords": [
+      "declined",
+      "30 days"
+    ],
+    "disallowed_keywords": [
+      "approved",
+      "eligible for return"
+    ]
+  }
+}

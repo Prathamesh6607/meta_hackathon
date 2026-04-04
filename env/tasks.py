@@ -3,24 +3,41 @@
 
 TASKS = {
     'task_1': {
-        'name': 'Email Classification',
+        'name': 'Email Triage',
         'difficulty': 'easy',
-        'description': 'Classify each email into the correct category',
-        'max_steps': 10,
-        'grader': 'grade_classification'
+        'description': (
+            'Categorize incoming email issues, assign priority, and extract '
+            'Order_ID when present.'
+        ),
+        'max_steps': 8,
+        'allowed_actions': ['classify_email'],
+        'grader': 'grade_task_1_email',
     },
     'task_2': {
-        'name': 'Reply Drafting',
+        'name': 'Policy-Based Support Response',
         'difficulty': 'medium',
-        'description': 'Draft professional replies that address key concerns',
-        'max_steps': 15,
-        'grader': 'grade_reply'
+        'description': (
+            'Use query_policy before drafting an answer and apply the '
+            'return-window rule correctly.'
+        ),
+        'max_steps': 4,
+        'allowed_actions': ['query_policy', 'draft_response'],
+        'grader': 'grade_task_2',
     },
     'task_3': {
-        'name': 'Full Inbox Triage',
+        'name': 'Multi-System Resolution',
         'difficulty': 'hard',
-        'description': 'Classify, escalate, and route 10 emails correctly',
-        'max_steps': 25,
-        'grader': 'grade_full_triage'
-    }
+        'description': (
+            'Resolve a defective-item ticket by querying order DB and inventory, '
+            'then taking the correct final action.'
+        ),
+        'max_steps': 6,
+        'allowed_actions': [
+            'query_order_db',
+            'query_inventory',
+            'ship_replacement',
+            'issue_refund',
+        ],
+        'grader': 'grade_task_3',
+    },
 }

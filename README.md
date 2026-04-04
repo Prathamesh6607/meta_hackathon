@@ -71,15 +71,49 @@ uvicorn api.main:app --port 8000
 
 ## UI Frontend (Interactive Demo)
 
-This project now includes a browser UI to demo how the environment works step-by-step.
+This project now includes a browser UI to demo how the environment works step-by-step, with a Meta-blue theme and a corpus-backed support search.
 
 - URL: `http://127.0.0.1:8000/ui`
 - Features:
 	- Task selector (`task_1`, `task_2`, `task_3`)
+	- API key input for AI-assisted processing
+	- Optional model name input (OpenCV)
 	- Manual action builder and submit
 	- Auto Next and full Run Episode
 	- Live metrics + timeline
 	- Human-readable observation and final task response panels
+	- Corpus-backed support recommendations from the local dataset index
+	- Browser support search panel for querying the corpus directly
+	- Corpus stats card showing records and top labels
+	- Meta-blue visual theme for pitch/demo use
+
+When **Use API key for task processing** is enabled:
+- `task_1` can use your OpenCV API key for classification
+- `task_2` and `task_3` continue with deterministic tool-aware logic
+
+The backend builds an inverted index over the local support corpus in `datasets/` and returns a retrieval-backed support recommendation for each step. That makes the demo easier to pitch to Meta because it shows explainable, corpus-grounded support triage instead of a pure black-box reply.
+
+The active corpus file is `datasets/meta_support_subset.csv`. It was generated from the local support corpus and is preferred by the loader.
+
+If you download a Kaggle Twitter support dataset later, place it in `datasets/` as `twcs.csv`, `customer_support_on_twitter.csv`, or `twitter_customer_support.csv` and the same index will pick it up automatically.
+
+If you generate `datasets/meta_support_subset.csv`, the backend will prefer it first.
+
+Backend endpoint used by the UI:
+- `POST /auto-step/{task_id}` with body:
+  - `api_key` (optional)
+  - `model_name` (optional)
+  - `use_api` (boolean)
+
+Useful API for inspection:
+- `POST /support/search` with body:
+	- `query` (required)
+	- `top_k` (optional)
+- `GET /support/stats` for corpus size, unique tokens, and top labels
+
+Meta subset generator:
+- `python scripts/build_meta_support_subset.py <input> <output> [max_rows]`
+- It keeps rows mentioning Meta-related support keywords such as Facebook, Instagram, WhatsApp, Messenger, account, login, privacy, and ads.
 
 ### Run Locally (Windows PowerShell)
 
@@ -110,3 +144,7 @@ export GEMINI_MODEL=gemini-1.5-flash
 export GEMINI_API_BASE=https://generativelanguage.googleapis.com/v1beta
 export ENV_URL=https://YOUR_USERNAME-email-triage-env.hf.space
 python inference.py
+
+## POC Demo
+
+See [POC.md](POC.md) for the current demo flow and pitch script.

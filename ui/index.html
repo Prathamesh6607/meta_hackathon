@@ -29,12 +29,44 @@
           <option value="task_3">task_3 - Multi-system resolution</option>
         </select>
       </div>
+      <div class="control-row">
+        <label for="apiKeyInput">API Key (for AI processing)</label>
+        <input id="apiKeyInput" type="password" placeholder="Paste OpenCV API key" />
+      </div>
+      <div class="control-row">
+        <label for="modelInput">Model (optional)</label>
+        <input id="modelInput" type="text" placeholder="opencv-vision-1" />
+      </div>
+      <div class="control-row inline-row">
+        <input id="useApiCheckbox" type="checkbox" />
+        <label for="useApiCheckbox" class="inline-label">Use API key for task processing</label>
+      </div>
       <div class="button-row">
         <button id="resetBtn" class="btn btn-primary">Reset</button>
         <button id="autoBtn" class="btn">Auto Next</button>
         <button id="runEpisodeBtn" class="btn">Run Episode</button>
       </div>
       <p id="statusText" class="status">Ready.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Support Search</h2>
+      <div id="supportStats" class="support-stats"></div>
+      <div class="search-grid">
+        <div class="control-row search-input-row">
+          <label for="supportSearchInput">Search Query</label>
+          <input id="supportSearchInput" type="text" placeholder="Meta login privacy account issue" />
+        </div>
+        <div class="control-row search-input-row">
+          <label for="supportSearchTopK">Top Results</label>
+          <input id="supportSearchTopK" type="number" min="1" max="10" value="3" />
+        </div>
+      </div>
+      <div class="button-row">
+        <button id="supportSearchBtn" class="btn btn-primary">Search Corpus</button>
+        <button id="supportSearchClearBtn" class="btn">Clear</button>
+      </div>
+      <div id="supportSearchResults" class="search-results"></div>
     </section>
 
     <section class="grid">

@@ -1,0 +1,26 @@
+{
+  "ticket": {
+    "ticket_id": "tkt_resolution_rw_001",
+    "customer_id": "cus_3001",
+    "order_id": "ORD-30001",
+    "sku": "SKU-ABC-01",
+    "issue_type": "Defective Item",
+    "message": "My item from order ORD-30001 is defective."
+  },
+  "order_db": {
+    "ORD-30001": {
+      "order_id": "ORD-30001",
+      "customer_id": "cus_3001",
+      "sku": "SKU-ABC-01",
+      "status": "Delivered"
+    }
+  },
+  "inventory_db": {
+    "SKU-ABC-01": {
+      "sku": "SKU-ABC-01",
+      "in_stock": true,
+      "available_units": 4
+    }
+  },
+  "expected_final_action": "ship_replacement"
+}

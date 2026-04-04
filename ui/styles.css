@@ -1,11 +1,12 @@
 :root {
-  --bg: #f4f0e8;
-  --ink: #1c2421;
-  --card: rgba(255, 255, 255, 0.76);
-  --edge: rgba(23, 31, 28, 0.15);
-  --teal: #0f766e;
-  --orange: #b45309;
-  --rose: #be123c;
+  --bg: #eef4ff;
+  --ink: #10233f;
+  --card: rgba(255, 255, 255, 0.84);
+  --edge: rgba(8, 102, 255, 0.16);
+  --meta: #0866ff;
+  --meta-deep: #0f3d99;
+  --accent: #1d9bf0;
+  --rose: #c53030;
 }
 
 * {
@@ -16,9 +17,9 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--ink);
-  background: radial-gradient(1200px 700px at 5% 5%, #d7efe7 0%, transparent 65%),
-    radial-gradient(900px 500px at 100% 0%, #f9d5b0 0%, transparent 65%),
-    linear-gradient(140deg, #f8f5ef 0%, #ece4d8 100%);
+  background: radial-gradient(1200px 700px at 10% 8%, rgba(8, 102, 255, 0.16) 0%, transparent 62%),
+    radial-gradient(900px 500px at 100% 0%, rgba(29, 155, 240, 0.14) 0%, transparent 58%),
+    linear-gradient(140deg, #f7fbff 0%, #e7efff 100%);
   font-family: "Space Grotesk", sans-serif;
   overflow-x: hidden;
 }
@@ -36,7 +37,7 @@ body {
   height: 240px;
   left: -60px;
   top: 70px;
-  background: #14b8a6;
+  background: #6ea8ff;
 }
 
 .orb-b {
@@ -44,7 +45,7 @@ body {
   height: 300px;
   right: -120px;
   bottom: -40px;
-  background: #f97316;
+  background: #0866ff;
 }
 
 .layout {
@@ -55,7 +56,7 @@ body {
 }
 
 .hero {
-  background: linear-gradient(130deg, rgba(15, 118, 110, 0.9), rgba(180, 83, 9, 0.9));
+  background: linear-gradient(130deg, #0866ff 0%, #0f3d99 100%);
   color: #fefdfb;
   border-radius: 18px;
   padding: 22px 24px;
@@ -100,9 +101,31 @@ h1 {
   gap: 12px;
 }
 
+.search-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 12px;
+}
+
+.search-input-row input {
+  min-width: 0;
+}
+
 .control-row {
   display: grid;
   gap: 6px;
+}
+
+.inline-row {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.inline-label {
+  text-transform: none;
+  letter-spacing: 0.01em;
+  font-size: 0.9rem;
 }
 
 label {
@@ -152,14 +175,14 @@ textarea {
 }
 
 .btn-primary {
-  background: var(--teal);
-  border-color: var(--teal);
+  background: var(--meta);
+  border-color: var(--meta);
   color: #fff;
 }
 
 .btn-accent {
-  background: var(--orange);
-  border-color: var(--orange);
+  background: var(--meta-deep);
+  border-color: var(--meta-deep);
   color: #fff;
 }
 
@@ -167,6 +190,31 @@ textarea {
   margin: 0;
   font-family: "IBM Plex Mono", monospace;
   font-size: 0.86rem;
+}
+
+.support-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.support-stat {
+  background: linear-gradient(180deg, rgba(8, 102, 255, 0.1), rgba(255, 255, 255, 0.96));
+  border: 1px solid rgba(8, 102, 255, 0.18);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.support-stat .k {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.74rem;
+  opacity: 0.8;
+}
+
+.support-stat .v {
+  margin-top: 2px;
+  font-weight: 700;
 }
 
 .metrics {
@@ -199,6 +247,57 @@ textarea {
   margin: 10px 0 14px;
 }
 
+.search-results {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.search-empty {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.82rem;
+  opacity: 0.8;
+  padding: 10px 2px;
+}
+
+.search-card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(8, 102, 255, 0.18);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.search-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.search-card-meta {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.76rem;
+  opacity: 0.78;
+  margin-top: 4px;
+}
+
+.search-card-snippet {
+  margin-top: 8px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.8rem;
+  white-space: pre-wrap;
+}
+
+.search-card-metadata {
+  margin-top: 8px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  opacity: 0.9;
+}
+
 .mono-box {
   margin: 0;
   background: #171d1b;
@@ -213,8 +312,8 @@ textarea {
 
 .outcome-box {
   max-height: 280px;
-  border: 1px solid rgba(20, 184, 166, 0.35);
-  background: linear-gradient(155deg, #122424 0%, #1d1f1d 100%);
+  border: 1px solid rgba(8, 102, 255, 0.25);
+  background: linear-gradient(155deg, #09182f 0%, #102a55 100%);
 }
 
 .timeline {
@@ -225,7 +324,7 @@ textarea {
 }
 
 .timeline-item {
-  border-left: 4px solid var(--teal);
+  border-left: 4px solid var(--meta);
   background: rgba(255, 255, 255, 0.95);
   border-radius: 8px;
   padding: 8px 10px;
@@ -249,7 +348,9 @@ textarea {
 }
 
 @media (max-width: 900px) {
-  .grid {
+  .grid,
+  .search-grid,
+  .support-stats {
     grid-template-columns: 1fr;
   }
 }
