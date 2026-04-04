@@ -1,12 +1,16 @@
 # api/main.py
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from env.environment import EmailTriageEnv
 from env.models import Action
 
 app = FastAPI(
-    title='Email Triage OpenEnv',
+    title='Tier-2 Support OpenEnv',
     version='1.0.0',
-    description='Real-world email triage environment for AI agent benchmarking'
+    description='Tier-2 customer support benchmark for policy and multi-system workflows'
 )
 
 # One environment instance per task
@@ -16,10 +20,20 @@ envs = {
     'task_3': EmailTriageEnv(task_id='task_3'),
 }
 
+BASE_DIR = Path(__file__).resolve().parent.parent
+UI_DIR = BASE_DIR / 'ui'
+
+app.mount('/ui-assets', StaticFiles(directory=UI_DIR), name='ui-assets')
+
 
 @app.get('/')
 def health():
     return {'status': 'ok', 'environment': 'email-triage-env', 'tasks': list(envs.keys())}
+
+
+@app.get('/ui')
+def ui():
+    return FileResponse(UI_DIR / 'index.html')
 
 
 @app.post('/reset/{task_id}')

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Email Triage OpenEnv UI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/ui-assets/styles.css" />
+</head>
+<body>
+  <div class="bg-orb orb-a"></div>
+  <div class="bg-orb orb-b"></div>
+
+  <main class="layout">
+    <header class="hero">
+      <p class="eyebrow">Tier-2 Support Benchmark</p>
+      <h1>Email Triage OpenEnv Playground</h1>
+      <p class="subtitle">Reset a task, step through actions, or let the built-in baseline logic play it out.</p>
+    </header>
+
+    <section class="panel controls">
+      <div class="control-row">
+        <label for="taskSelect">Task</label>
+        <select id="taskSelect">
+          <option value="task_1">task_1 - Email classification</option>
+          <option value="task_2">task_2 - Policy response</option>
+          <option value="task_3">task_3 - Multi-system resolution</option>
+        </select>
+      </div>
+      <div class="button-row">
+        <button id="resetBtn" class="btn btn-primary">Reset</button>
+        <button id="autoBtn" class="btn">Auto Next</button>
+        <button id="runEpisodeBtn" class="btn">Run Episode</button>
+      </div>
+      <p id="statusText" class="status">Ready.</p>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <h2>Action Builder</h2>
+        <div class="control-row">
+          <label for="actionType">Action Type</label>
+          <select id="actionType"></select>
+        </div>
+        <div id="actionFields" class="fields"></div>
+        <button id="submitActionBtn" class="btn btn-accent">Submit Action</button>
+      </article>
+
+      <article class="panel">
+        <h2>Live Metrics</h2>
+        <div id="metrics" class="metrics"></div>
+      </article>
+    </section>
+
+    <section class="grid">
+      <article class="panel">
+        <h2>Current Observation</h2>
+        <pre id="observationView" class="mono-box"></pre>
+      </article>
+
+      <article class="panel">
+        <h2>Step Timeline</h2>
+        <div id="timeline" class="timeline"></div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <h2>Final Task Response</h2>
+      <pre id="outcomeView" class="mono-box outcome-box"></pre>
+    </section>
+  </main>
+
+  <script src="/ui-assets/app.js" defer></script>
+</body>
+</html>
