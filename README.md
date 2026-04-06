@@ -145,6 +145,16 @@ export GEMINI_API_BASE=https://generativelanguage.googleapis.com/v1beta
 export ENV_URL=https://YOUR_USERNAME-email-triage-env.hf.space
 python inference.py
 
+The task_1 agent now learns online from environment rewards and persists its
+policy to `datasets/task1_agent_policy.json`. Gemini is only used as a fallback
+when the learned policy is low confidence and an API key is available.
+The UI does not expose any Gemini key input; the server reads its own fallback
+credentials from environment variables when needed.
+
+Useful overrides:
+- `TASK1_FALLBACK_THRESHOLD` controls when Gemini is consulted for task_1.
+- `TASK1_AGENT` can be instantiated with a custom policy path in code if you want to store the policy elsewhere.
+
 ## POC Demo
 
 See [POC.md](POC.md) for the current demo flow and pitch script.

@@ -29,17 +29,9 @@
           <option value="task_3">task_3 - Multi-system resolution</option>
         </select>
       </div>
-      <div class="control-row">
-        <label for="apiKeyInput">API Key (for AI processing)</label>
-        <input id="apiKeyInput" type="password" placeholder="Paste OpenCV API key" />
-      </div>
-      <div class="control-row">
-        <label for="modelInput">Model (optional)</label>
-        <input id="modelInput" type="text" placeholder="opencv-vision-1" />
-      </div>
       <div class="control-row inline-row">
         <input id="useApiCheckbox" type="checkbox" />
-        <label for="useApiCheckbox" class="inline-label">Use API key for task processing</label>
+        <label for="useApiCheckbox" class="inline-label">Enable self-learning fallback for task_1</label>
       </div>
       <div class="button-row">
         <button id="resetBtn" class="btn btn-primary">Reset</button>
@@ -52,6 +44,16 @@
     <section class="panel">
       <h2>Support Search</h2>
       <div id="supportStats" class="support-stats"></div>
+      <div class="agent-status-shell">
+        <div class="agent-status-head">
+          <h3>Self-Learning Module</h3>
+          <span id="agentStatusMeta" class="agent-status-meta">Idle</span>
+        </div>
+        <div id="agentStatus" class="agent-status"></div>
+        <div class="button-row agent-actions">
+          <a class="btn btn-ghost" href="/ui/logs">Open Log Page</a>
+        </div>
+      </div>
       <div class="search-grid">
         <div class="control-row search-input-row">
           <label for="supportSearchInput">Search Query</label>

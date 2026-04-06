@@ -12,6 +12,7 @@ from pydantic import BaseModel
 import requests
 from env.environment import EmailTriageEnv
 from env.models import Action
+from env.rl_agent import Task1ReinforcementAgent
 from env.support_kb import SupportKnowledgeBase
 
 app = FastAPI(
@@ -30,6 +31,7 @@ envs = {
 BASE_DIR = Path(__file__).resolve().parent.parent
 UI_DIR = BASE_DIR / 'ui'
 SUPPORT_KB = SupportKnowledgeBase.from_datasets(BASE_DIR / 'datasets')
+TASK1_AGENT = Task1ReinforcementAgent()
 
 app.mount('/ui-assets', StaticFiles(directory=UI_DIR), name='ui-assets')
 
@@ -301,6 +303,11 @@ def ui():
     return FileResponse(UI_DIR / 'index.html')
 
 
+@app.get('/ui/logs')
+def ui_logs():
+    return FileResponse(UI_DIR / 'logs.html')
+
+
 @app.post('/support/search')
 def support_search(request: SupportSearchRequest):
     query = (request.query or '').strip()
@@ -332,8 +339,14 @@ def step(task_id: str, action: Action):
     if task_id not in envs:
         raise HTTPException(status_code=404, detail=f'Task {task_id} not found')
     try:
+        pre_step_obs = envs[task_id]._build_observation().model_dump()
         result = envs[task_id].step(action)
         obs_dump = result['observation'].model_dump()
+        if task_id == 'task_1':
+            reward_payload = result['reward'].model_dump()
+            reward_payload['context'] = pre_step_obs.get('context') or {}
+            reward_payload['source'] = 'manual'
+            TASK1_AGENT.observe(pre_step_obs.get('current_email') or {}, action.model_dump(), reward_payload)
         return {
             'observation': obs_dump,
             'reward': result['reward'].model_dump(),
@@ -367,17 +380,14 @@ def auto_step(task_id: str, request: AutoStepRequest):
         context = obs.get('context') or {}
 
         if task_id == 'task_1':
-            if request.use_api and request.api_key:
-                try:
-                    action_data = _call_gemini_for_task_1(
-                        current_email=current_email,
-                        api_key=request.api_key,
-                        model_name=request.model_name,
-                    )
-                except Exception:
-                    action_data = _choose_task_1_action_heuristic(current_email)
-            else:
-                action_data = _choose_task_1_action_heuristic(current_email)
+            fallback_key = os.environ.get('GEMINI_API_KEY', os.environ.get('GOOGLE_API_KEY', ''))
+            decision = TASK1_AGENT.choose_action(
+                current_email=current_email,
+                api_key=fallback_key if request.use_api else None,
+                model_name=request.model_name,
+                allow_gemini_fallback=request.use_api,
+            )
+            action_data = decision.action
         elif task_id == 'task_2':
             action_data = _choose_task_2_action(ticket=ticket, traces=traces, context=context)
         else:
@@ -387,6 +397,12 @@ def auto_step(task_id: str, request: AutoStepRequest):
         action = Action(**action_data)
         result = env.step(action)
         obs_dump = result['observation'].model_dump()
+        if task_id == 'task_1':
+            reward_payload = result['reward'].model_dump()
+            reward_payload['context'] = obs.get('context') or {}
+            reward_payload['source'] = decision.source if task_id == 'task_1' else 'policy'
+            reward_payload['confidence'] = decision.confidence if task_id == 'task_1' else None
+            TASK1_AGENT.observe(current_email, action.model_dump(), reward_payload)
         return {
             'action_used': action.model_dump(),
             'observation': obs_dump,
@@ -397,6 +413,23 @@ def auto_step(task_id: str, request: AutoStepRequest):
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get('/agent/task_1')
+def agent_task_1_state():
+    stats = TASK1_AGENT.stats()
+    stats['epoch_run'] = envs['task_1'].state().get('episode_run', 0)
+    return stats
+
+
+@app.get('/agent/task_1/logs')
+def agent_task_1_logs(limit: int = 100):
+    if limit <= 0:
+        limit = 100
+    return {
+        'limit': limit,
+        'entries': TASK1_AGENT.logs(limit=limit),
+    }
 
 
 @app.get('/state/{task_id}')

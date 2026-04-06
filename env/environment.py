@@ -249,6 +249,7 @@ class EmailTriageEnv:
             'max_steps': self.max_steps,
             'steps_remaining': max(self.max_steps - self._current_step, 0),
             'total_reward_so_far': round(self._total_reward, 4),
+            'episode_run': self._episode_index,
         }
         ticket: SupportTicket | None = None
         inbox: list[SupportEmail] = []
@@ -310,6 +311,7 @@ class EmailTriageEnv:
             'done': self._done,
             'step': self._current_step,
             'max_steps': self.max_steps,
+            'episode_run': self._episode_index,
             'total_reward': round(self._total_reward, 4),
             'actions_taken': len(self._actions_taken),
             'tool_calls': len(self._tool_traces),

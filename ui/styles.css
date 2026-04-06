@@ -64,6 +64,14 @@ body {
   animation: lift 0.45s ease;
 }
 
+.hero-slim {
+  padding-bottom: 18px;
+}
+
+.hero-actions {
+  margin-top: 14px;
+}
+
 .eyebrow {
   margin: 0;
   text-transform: uppercase;
@@ -180,6 +188,16 @@ textarea {
   color: #fff;
 }
 
+.btn-ghost {
+  background: transparent;
+  color: var(--meta-deep);
+  text-decoration: none;
+}
+
+.agent-actions {
+  margin-top: 12px;
+}
+
 .btn-accent {
   background: var(--meta-deep);
   border-color: var(--meta-deep);
@@ -215,6 +233,142 @@ textarea {
 .support-stat .v {
   margin-top: 2px;
   font-weight: 700;
+}
+
+.agent-status-shell {
+  background: linear-gradient(180deg, rgba(15, 61, 153, 0.08), rgba(255, 255, 255, 0.9));
+  border: 1px solid rgba(15, 61, 153, 0.16);
+  border-radius: 14px;
+  padding: 12px;
+  margin-bottom: 12px;
+}
+
+.agent-status-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.agent-status-head h3 {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.agent-status-meta {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  opacity: 0.82;
+  text-align: right;
+}
+
+.agent-status {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.agent-stat {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(15, 61, 153, 0.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.agent-stat .k {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.74rem;
+  opacity: 0.76;
+}
+
+.agent-stat .v {
+  margin-top: 2px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  word-break: break-word;
+}
+
+.btn-ghost:hover {
+  background: rgba(15, 61, 153, 0.08);
+  box-shadow: none;
+}
+
+.log-filter-row {
+  max-width: 320px;
+}
+
+.log-list {
+  display: grid;
+  gap: 14px;
+}
+
+.log-card {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(8, 102, 255, 0.16);
+  border-radius: 16px;
+  padding: 14px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.06);
+}
+
+.log-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  margin-bottom: 12px;
+}
+
+.log-card-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.log-meta {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  opacity: 0.75;
+}
+
+.log-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.log-field {
+  background: linear-gradient(180deg, rgba(15, 61, 153, 0.06), rgba(255, 255, 255, 1));
+  border: 1px solid rgba(15, 61, 153, 0.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.log-field .k {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.73rem;
+  opacity: 0.72;
+}
+
+.log-field .v {
+  margin-top: 2px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  word-break: break-word;
+}
+
+.log-field .log-json {
+  margin: 8px 0 0;
+  white-space: pre-wrap;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  background: rgba(15, 61, 153, 0.06);
+  border: 1px solid rgba(15, 61, 153, 0.1);
+  border-radius: 10px;
+  padding: 10px;
+  max-height: 180px;
+  overflow: auto;
 }
 
 .metrics {
@@ -350,8 +504,15 @@ textarea {
 @media (max-width: 900px) {
   .grid,
   .search-grid,
-  .support-stats {
+  .support-stats,
+  .agent-status,
+  .log-grid {
     grid-template-columns: 1fr;
+  }
+
+  .agent-status-head {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 

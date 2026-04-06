@@ -45,6 +45,20 @@ Explain:
 - the support recommendation panel explains the result,
 - the same corpus can be used to ground future support responses.
 
+### 4.1 Show self-learning proof (expected output)
+In the Self-Learning Module, call out these fields and what they mean:
+- Examples Seen and Updates should increase as you run steps.
+- Epoch Run should increase each time a new episode starts.
+- Log Entries should increase as learning events are recorded.
+- Recommended Model can show `TF-IDF + Logistic Regression`.
+- Model In Use can show `Online linear policy with heuristic features and Gemini fallback`.
+- Using Recommended can show `No` when the active model differs from the recommended baseline.
+- Policy File should show `task1_agent_policy.json`, proving persistence across runs.
+- Category Bias and Priority Bias values should be non-zero after a few learning updates.
+
+Use this line in your talk track:
+"The learner is active and updating online. You can see examples, updates, epoch count, and persisted policy state changing live in the UI."
+
 ### 5. Show why it is useful for Meta
 Talk track:
 - it is explainable, not just a black-box reply,

@@ -4,6 +4,7 @@ import json
 import re
 import requests
 from dotenv import load_dotenv
+from env.rl_agent import Task1ReinforcementAgent
 
 load_dotenv()  # reads from .env file
 
@@ -13,9 +14,7 @@ HF_TOKEN = os.environ.get('HF_TOKEN', '')
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', os.environ.get('GOOGLE_API_KEY', ''))
 GEMINI_API_BASE = os.environ.get('GEMINI_API_BASE', 'https://generativelanguage.googleapis.com/v1beta')
 USE_GEMINI_TASK1 = os.environ.get('USE_GEMINI_TASK1', os.environ.get('USE_GEMINI', '0')) == '1'
-
-if USE_GEMINI_TASK1 and not GEMINI_API_KEY:
-    raise RuntimeError('USE_GEMINI_TASK1=1 requires GEMINI_API_KEY (or GOOGLE_API_KEY).')
+TASK1_AGENT = Task1ReinforcementAgent()
 
 # Where your environment is running
 ENV_URL = os.environ.get('ENV_URL', 'http://127.0.0.1:8000')
@@ -261,7 +260,13 @@ def choose_task_3_action(ticket: dict, traces: list) -> dict:
 
 def choose_action(task_id: str, current_email: dict, ticket: dict, traces: list, context: dict, step_num: int, use_gemini_task1: bool) -> dict:
     if task_id == 'task_1':
-        return choose_task_1_action(current_email=current_email, step_num=step_num, use_gemini=use_gemini_task1)
+        decision = TASK1_AGENT.choose_action(
+            current_email=current_email,
+            api_key=GEMINI_API_KEY if use_gemini_task1 else None,
+            model_name=MODEL_NAME,
+            allow_gemini_fallback=use_gemini_task1,
+        )
+        return decision.action
     if task_id == 'task_2':
         return choose_task_2_action(ticket=ticket, traces=traces, context=context)
     if task_id == 'task_3':
@@ -329,14 +334,18 @@ def run_task(task_id: str) -> float:
 
         print(f'  Step {step_num:2d}: {action.get("action_type", "?")} ', end='')
 
+        sent_action = action
         try:
             step_resp = requests.post(f'{ENV_URL}/step/{task_id}', json=action, timeout=30)
             step_resp.raise_for_status()
         except requests.RequestException:
-            step_resp = requests.post(f'{ENV_URL}/step/{task_id}', json=deterministic_fallback, timeout=30)
+            sent_action = deterministic_fallback
+            step_resp = requests.post(f'{ENV_URL}/step/{task_id}', json=sent_action, timeout=30)
             step_resp.raise_for_status()
 
         result = step_resp.json()
+        if task_id == 'task_1':
+            TASK1_AGENT.observe(current_email, sent_action, result.get('reward', {}) or {})
         reward = (result.get('reward', {}) or {}).get('value', 0.0) or 0.0
         total_reward += float(reward)
         steps_executed += 1
@@ -359,7 +368,8 @@ def main():
     print('Email Triage OpenEnv - Baseline Inference')
     print(f'Model: {MODEL_NAME}')
     print(f'Environment: {ENV_URL}')
-    print(f'Use Gemini for Task 1: {USE_GEMINI_TASK1}')
+    print(f'Use Gemini fallback for Task 1: {USE_GEMINI_TASK1}')
+    print(f'Task 1 policy file: {TASK1_AGENT.policy_path}')
 
     try:
         health = requests.get(f'{ENV_URL}/', timeout=5)

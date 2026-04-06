@@ -28,8 +28,6 @@ const refs = {
   resetBtn: document.getElementById("resetBtn"),
   autoBtn: document.getElementById("autoBtn"),
   runEpisodeBtn: document.getElementById("runEpisodeBtn"),
-  apiKeyInput: document.getElementById("apiKeyInput"),
-  modelInput: document.getElementById("modelInput"),
   useApiCheckbox: document.getElementById("useApiCheckbox"),
   supportSearchInput: document.getElementById("supportSearchInput"),
   supportSearchTopK: document.getElementById("supportSearchTopK"),
@@ -37,6 +35,8 @@ const refs = {
   supportSearchClearBtn: document.getElementById("supportSearchClearBtn"),
   supportSearchResults: document.getElementById("supportSearchResults"),
   supportStats: document.getElementById("supportStats"),
+  agentStatus: document.getElementById("agentStatus"),
+  agentStatusMeta: document.getElementById("agentStatusMeta"),
   submitActionBtn: document.getElementById("submitActionBtn"),
   statusText: document.getElementById("statusText"),
   observationView: document.getElementById("observationView"),
@@ -369,6 +369,7 @@ function buildFinalOutcomeText() {
   if (state.taskId === "task_1") {
     lines.push(`- processed_emails: ${context.emails_processed ?? "N/A"}`);
     lines.push(`- average_email_score: ${context.avg_email_score ?? "N/A"}`);
+    lines.push(`- epoch_run: ${context.episode_run ?? "N/A"}`);
     lines.push(`- last_order_id: ${action.order_id || "N/A"}`);
   } else if (state.taskId === "task_2") {
     lines.push(`- policy_queried: ${Boolean(context.queried_policy)}`);
@@ -474,6 +475,54 @@ function renderSupportStats(stats) {
   });
 }
 
+function formatAgentBiases(biases) {
+  const items = Object.entries(biases || {});
+  if (items.length === 0) {
+    return "N/A";
+  }
+  return items
+    .map(([label, value]) => `${label}: ${Number(value || 0).toFixed(2)}`)
+    .join(" | ");
+}
+
+function renderAgentStatus(stats) {
+  refs.agentStatus.innerHTML = "";
+  if (!stats) {
+    refs.agentStatus.innerHTML = '<div class="search-empty">Agent stats unavailable.</div>';
+    refs.agentStatusMeta.textContent = "Offline";
+    return;
+  }
+
+  refs.agentStatusMeta.textContent = `Policy ${Number(stats.fallback_threshold || 0).toFixed(2)} fallback threshold`;
+
+  const cards = [
+    ["Examples Seen", String(stats.examples_seen ?? 0)],
+    ["Updates", String(stats.updates ?? 0)],
+    ["Log Entries", String(stats.log_entries ?? 0)],
+    ["Epoch Run", String(stats.epoch_run ?? "-")],
+    ["Recommended Model", String(stats.recommended_model || "N/A")],
+    ["Model In Use", String(stats.model_in_use || "N/A")],
+    ["Using Recommended", (stats.is_using_recommended_model ? "Yes" : "No")],
+    ["Policy File", String((stats.policy_path || "").split(/[\\/]/).pop() || "N/A")],
+    ["Category Bias", formatAgentBiases(stats.biases?.category)],
+    ["Priority Bias", formatAgentBiases(stats.biases?.priority)],
+  ];
+
+  cards.forEach(([label, value]) => {
+    const card = document.createElement("div");
+    card.className = "agent-stat";
+    const k = document.createElement("div");
+    k.className = "k";
+    k.textContent = label;
+    const v = document.createElement("div");
+    v.className = "v";
+    v.textContent = value;
+    card.appendChild(k);
+    card.appendChild(v);
+    refs.agentStatus.appendChild(card);
+  });
+}
+
 async function loadSupportStats() {
   const resp = await fetch("/support/stats");
   if (!resp.ok) {
@@ -481,6 +530,15 @@ async function loadSupportStats() {
   }
   const payload = await resp.json();
   renderSupportStats(payload);
+}
+
+async function loadAgentStatus() {
+  const resp = await fetch("/agent/task_1");
+  if (!resp.ok) {
+    throw new Error(`HTTP ${resp.status}`);
+  }
+  const payload = await resp.json();
+  renderAgentStatus(payload);
 }
 
 async function runSupportSearch() {
@@ -653,6 +711,7 @@ async function apiReset() {
   state.lastAction = null;
   setStatus(`Reset complete for ${state.taskId}.`);
   renderAll();
+  await loadAgentStatus();
 }
 
 async function apiStep(action) {
@@ -692,12 +751,11 @@ async function apiStep(action) {
 
   setStatus(`Step ${state.steps} complete. Reward ${state.lastReward.toFixed(3)}.`);
   renderAll();
+  await loadAgentStatus();
 }
 
 function getAutoStepOptions() {
   return {
-    api_key: refs.apiKeyInput.value.trim() || null,
-    model_name: refs.modelInput.value.trim() || null,
     use_api: Boolean(refs.useApiCheckbox.checked),
   };
 }
@@ -740,6 +798,7 @@ async function apiAutoStep() {
 
   setStatus(`Step ${state.steps} complete. Reward ${state.lastReward.toFixed(3)}.`);
   renderAll();
+  await loadAgentStatus();
 }
 
 async function runEpisode() {
@@ -828,6 +887,7 @@ refs.supportSearchClearBtn.addEventListener("click", () => {
   refs.supportSearchResults.innerHTML = '<div class="search-empty">Enter a query to search the support corpus.</div>';
   try {
     await loadSupportStats();
+    await loadAgentStatus();
     await apiReset();
   } catch (err) {
     setStatus(`Boot failed: ${err.message}`);
