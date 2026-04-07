@@ -1,6 +1,9 @@
-FROM python:3.10-slim
+FROM python:3.10.1-slim
 
 WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PORT=7860
 
 # Install dependencies first (Docker caches this layer)
 COPY requirements.txt .
@@ -13,4 +16,4 @@ COPY . .
 EXPOSE 7860
 
 # Start the FastAPI server
-CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-7860}"]

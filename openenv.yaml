@@ -5,7 +5,7 @@ description: >
   A Tier-2 customer support benchmark where agents must triage raw emails,
   apply policy correctly, and resolve defective-item tickets using multiple
   system/tool calls.
-author: your-username
+author: openenv-contributor
 domain: customer-support
 tags:
   - email
@@ -74,3 +74,8 @@ endpoints:
   reset: POST /reset/{task_id}
   step:  POST /step/{task_id}
   state: GET  /state/{task_id}
+  auto_step: POST /auto-step/{task_id}
+  pipeline_run: POST /pipeline/run
+  pipeline_aliases: POST /pipeline, POST /pipeline/run/
+  training_run: POST /training/run
+  training_logs: GET /training/logs

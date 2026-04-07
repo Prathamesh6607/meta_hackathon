@@ -115,38 +115,6 @@ def sanitize_task_1_action(candidate: dict, current_email: dict) -> dict:
     return {'action_type': 'classify_email', 'category': category, 'priority': priority, 'order_id': order_id}
 
 
-def call_gemini_task_1(current_email: dict, api_key: str, model_name: Optional[str] = None) -> dict:
-    model = model_name or os.environ.get('GEMINI_MODEL', 'gemini-1.5-flash')
-    base_url = os.environ.get('GEMINI_API_BASE', 'https://generativelanguage.googleapis.com/v1beta')
-    prompt = (
-        'Extract support triage fields and return JSON only.\n'
-        f'Allowed categories: {CATEGORY_OPTIONS}\n'
-        f'Allowed priorities: {PRIORITY_OPTIONS}\n'
-        'Return keys: action_type, category, priority, order_id.\n'
-        'action_type must be "classify_email". order_id should be null when absent.\n'
-        f'Subject: {current_email.get("subject", "")}\n'
-        f'Body: {current_email.get("body", "")}\n'
-    )
-
-    response = requests.post(
-        f'{base_url}/models/{model}:generateContent',
-        params={'key': api_key},
-        json={
-            'contents': [{'role': 'user', 'parts': [{'text': prompt}]}],
-            'generationConfig': {'temperature': 0.0, 'maxOutputTokens': 512},
-        },
-        timeout=60,
-    )
-    response.raise_for_status()
-    payload = response.json()
-    candidates = payload.get('candidates', [])
-    if not candidates:
-        return heuristic_task_1_action(current_email)
-    parts = candidates[0].get('content', {}).get('parts', [])
-    text = '\n'.join([p.get('text', '') for p in parts if isinstance(p, dict)]).strip()
-    return sanitize_task_1_action(parse_action(text), current_email)
-
-
 class Task1ReinforcementAgent:
     def __init__(
         self,
@@ -165,7 +133,7 @@ class Task1ReinforcementAgent:
         self.learning_log = self._load_learning_log()
         self.recommended_model = 'TF-IDF + Logistic Regression'
         self.recommended_model_reason = 'Best fit for short support-ticket text classification with a small label set.'
-        self.model_in_use = 'Online linear policy with heuristic features and Gemini fallback'
+        self.model_in_use = 'Online linear policy with heuristic features and HF Space-assisted fallback'
         self.is_using_recommended_model = False
 
     @staticmethod
@@ -301,7 +269,7 @@ class Task1ReinforcementAgent:
         current_email: dict,
         api_key: Optional[str] = None,
         model_name: Optional[str] = None,
-        allow_gemini_fallback: bool = True,
+        allow_external_fallback: bool = True,
     ) -> Task1Decision:
         tokens = tokenize(build_email_text(current_email))
         category_scores = self._score_labels(tokens, 'category')
@@ -318,12 +286,9 @@ class Task1ReinforcementAgent:
         }
 
         if confidence < self.fallback_threshold:
-            if allow_gemini_fallback and api_key:
-                try:
-                    fallback_action = call_gemini_task_1(current_email=current_email, api_key=api_key, model_name=model_name)
-                    return Task1Decision(action=fallback_action, source='gemini', confidence=confidence)
-                except Exception:
-                    pass
+            _ = api_key
+            _ = model_name
+            _ = allow_external_fallback
             return Task1Decision(action=heuristic_task_1_action(current_email), source='heuristic', confidence=confidence)
 
         return Task1Decision(action=action, source='policy', confidence=confidence)

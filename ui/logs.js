@@ -3,6 +3,11 @@ const refs = {
   epochFilter: document.getElementById("epochFilter"),
   logSummary: document.getElementById("logSummary"),
   logList: document.getElementById("logList"),
+  roundSummary: document.getElementById("roundSummary"),
+  roundLogs: document.getElementById("roundLogs"),
+  roundEpochCount: document.getElementById("roundEpochCount"),
+  trainAgainBtn: document.getElementById("trainAgainBtn"),
+  refreshRoundBtn: document.getElementById("refreshRoundBtn"),
 };
 
 const state = {
@@ -134,6 +139,80 @@ function renderLogs() {
   });
 }
 
+function renderRoundSummary(payload) {
+  const summary = payload?.summary || {};
+  const cards = [
+    ["Epoch Logs", String(summary.epochs ?? 0)],
+    ["Latest Epoch", String(summary.latest_epoch ?? "-")],
+    ["Best Avg Score", formatFloat(summary.best_average_score || 0)],
+  ];
+
+  refs.roundSummary.innerHTML = "";
+  cards.forEach(([label, value]) => {
+    const card = document.createElement("div");
+    card.className = "support-stat";
+    const k = document.createElement("div");
+    k.className = "k";
+    k.textContent = label;
+    const v = document.createElement("div");
+    v.className = "v";
+    v.textContent = value;
+    card.appendChild(k);
+    card.appendChild(v);
+    refs.roundSummary.appendChild(card);
+  });
+}
+
+function renderRoundLogs(entries) {
+  refs.roundLogs.innerHTML = "";
+  if (!Array.isArray(entries) || entries.length === 0) {
+    refs.roundLogs.innerHTML = '<div class="search-empty">No round epoch logs yet.</div>';
+    return;
+  }
+
+  entries.slice().reverse().slice(0, 20).forEach((entry) => {
+    const t1 = formatFloat(entry?.tasks?.task_1?.score || 0);
+    const t2 = formatFloat(entry?.tasks?.task_2?.score || 0);
+    const t3 = formatFloat(entry?.tasks?.task_3?.score || 0);
+    const avg = formatFloat(entry?.average_score || 0);
+
+    const card = document.createElement("article");
+    card.className = "epoch-log-item";
+    card.innerHTML = [
+      `<div class="head">Epoch ${entry.epoch} • Avg ${avg}</div>`,
+      `<div class="desc">task_1=${t1} | task_2=${t2} | task_3=${t3}</div>`,
+      `<div class="desc">use_api=${Boolean(entry.use_api)} • ${entry.timestamp || "unknown time"}</div>`,
+    ].join("");
+    refs.roundLogs.appendChild(card);
+  });
+}
+
+async function loadRoundLogs() {
+  const resp = await fetch("/training/logs?limit=200");
+  if (!resp.ok) {
+    throw new Error(`Round logs HTTP ${resp.status}`);
+  }
+  const payload = await resp.json();
+  renderRoundSummary(payload);
+  renderRoundLogs(payload.entries || []);
+}
+
+async function trainAgain() {
+  const epochs = Math.max(1, Math.min(200, Number.parseInt(refs.roundEpochCount.value || "1", 10) || 1));
+  refs.roundEpochCount.value = String(epochs);
+
+  const resp = await fetch("/training/run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ epochs, use_api: false }),
+  });
+  if (!resp.ok) {
+    throw new Error(`Training HTTP ${resp.status}`);
+  }
+  await loadLogs();
+  await loadRoundLogs();
+}
+
 async function loadLogs() {
   const [agentResp, logsResp] = await Promise.all([
     fetch("/agent/task_1"),
@@ -162,13 +241,37 @@ refs.refreshBtn.addEventListener("click", async () => {
   }
 });
 
+refs.refreshRoundBtn.addEventListener("click", async () => {
+  try {
+    await loadRoundLogs();
+  } catch (err) {
+    refs.roundLogs.innerHTML = `<div class="search-empty">Failed to load round logs: ${err.message}</div>`;
+  }
+});
+
+refs.trainAgainBtn.addEventListener("click", async () => {
+  try {
+    refs.trainAgainBtn.disabled = true;
+    refs.trainAgainBtn.textContent = "Training...";
+    await trainAgain();
+  } catch (err) {
+    refs.roundLogs.innerHTML = `<div class="search-empty">Training failed: ${err.message}</div>`;
+  } finally {
+    refs.trainAgainBtn.disabled = false;
+    refs.trainAgainBtn.textContent = "Train Again";
+  }
+});
+
 refs.epochFilter.addEventListener("input", renderLogs);
 
 (async function init() {
   try {
     await loadLogs();
+    await loadRoundLogs();
   } catch (err) {
     refs.logSummary.innerHTML = '<div class="search-empty">Log summary unavailable.</div>';
     refs.logList.innerHTML = `<div class="search-empty">Failed to load logs: ${err.message}</div>`;
+    refs.roundSummary.innerHTML = '<div class="search-empty">Round summary unavailable.</div>';
+    refs.roundLogs.innerHTML = `<div class="search-empty">Failed to load round logs: ${err.message}</div>`;
   }
 })();

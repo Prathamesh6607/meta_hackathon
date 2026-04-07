@@ -28,6 +28,7 @@ const refs = {
   resetBtn: document.getElementById("resetBtn"),
   autoBtn: document.getElementById("autoBtn"),
   runEpisodeBtn: document.getElementById("runEpisodeBtn"),
+  runPipelineBtn: document.getElementById("runPipelineBtn"),
   useApiCheckbox: document.getElementById("useApiCheckbox"),
   supportSearchInput: document.getElementById("supportSearchInput"),
   supportSearchTopK: document.getElementById("supportSearchTopK"),
@@ -37,6 +38,12 @@ const refs = {
   supportStats: document.getElementById("supportStats"),
   agentStatus: document.getElementById("agentStatus"),
   agentStatusMeta: document.getElementById("agentStatusMeta"),
+  trainingMeta: document.getElementById("trainingMeta"),
+  trainingSummary: document.getElementById("trainingSummary"),
+  epochCountInput: document.getElementById("epochCountInput"),
+  trainEpochBtn: document.getElementById("trainEpochBtn"),
+  refreshEpochBtn: document.getElementById("refreshEpochBtn"),
+  epochLogList: document.getElementById("epochLogList"),
   submitActionBtn: document.getElementById("submitActionBtn"),
   statusText: document.getElementById("statusText"),
   observationView: document.getElementById("observationView"),
@@ -485,6 +492,101 @@ function formatAgentBiases(biases) {
     .join(" | ");
 }
 
+function renderTrainingSummary(payload) {
+  const summary = payload?.summary || {};
+  const latest = summary.latest_epoch ?? "-";
+  const best = Number(summary.best_average_score || 0).toFixed(3);
+  const total = summary.epochs ?? 0;
+  refs.trainingMeta.textContent = `Latest epoch ${latest} • Best avg ${best}`;
+
+  refs.trainingSummary.innerHTML = "";
+  const cards = [
+    ["Epoch Logs", String(total)],
+    ["Latest Epoch", String(latest)],
+    ["Best Avg Score", best],
+  ];
+
+  cards.forEach(([label, value]) => {
+    const card = document.createElement("div");
+    card.className = "agent-stat";
+    const k = document.createElement("div");
+    k.className = "k";
+    k.textContent = label;
+    const v = document.createElement("div");
+    v.className = "v";
+    v.textContent = value;
+    card.appendChild(k);
+    card.appendChild(v);
+    refs.trainingSummary.appendChild(card);
+  });
+}
+
+function renderEpochLogs(entries) {
+  refs.epochLogList.innerHTML = "";
+  if (!Array.isArray(entries) || entries.length === 0) {
+    refs.epochLogList.innerHTML = '<div class="search-empty">No epoch logs yet. Click Train Again.</div>';
+    return;
+  }
+
+  entries.slice().reverse().slice(0, 12).forEach((entry) => {
+    const item = document.createElement("article");
+    item.className = "epoch-log-item";
+
+    const task1 = Number(entry?.tasks?.task_1?.score || 0).toFixed(3);
+    const task2 = Number(entry?.tasks?.task_2?.score || 0).toFixed(3);
+    const task3 = Number(entry?.tasks?.task_3?.score || 0).toFixed(3);
+    const avg = Number(entry?.average_score || 0).toFixed(3);
+
+    item.innerHTML = [
+      `<div class="head">Epoch ${entry.epoch} • Avg ${avg}</div>`,
+      `<div class="desc">task_1=${task1} | task_2=${task2} | task_3=${task3}</div>`,
+      `<div class="desc">use_api=${Boolean(entry.use_api)} • ${entry.timestamp || "unknown time"}</div>`,
+    ].join("");
+    refs.epochLogList.appendChild(item);
+  });
+}
+
+async function loadTrainingLogs() {
+  const resp = await fetch("/training/logs?limit=120");
+  if (!resp.ok) {
+    throw new Error(`HTTP ${resp.status}`);
+  }
+  const payload = await resp.json();
+  renderTrainingSummary(payload);
+  renderEpochLogs(payload.entries || []);
+}
+
+async function runEpochTraining() {
+  const epochs = Math.max(1, Math.min(200, asInt(refs.epochCountInput.value, 1)));
+  const useApi = Boolean(refs.useApiCheckbox.checked);
+  refs.epochCountInput.value = String(epochs);
+
+  const resp = await fetch("/training/run", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ epochs, use_api: useApi }),
+  });
+  if (!resp.ok) {
+    let detail = `HTTP ${resp.status}`;
+    try {
+      const payload = await resp.json();
+      if (payload?.detail) {
+        detail = payload.detail;
+      }
+    } catch (_e) {
+      // Ignore malformed error bodies.
+    }
+    throw new Error(detail);
+  }
+
+  const payload = await resp.json();
+  const latest = payload?.latest || null;
+  const avg = Number(latest?.average_score || 0).toFixed(3);
+  setStatus(`Training complete: ${epochs} epoch(s), latest avg score ${avg}.`);
+  await loadTrainingLogs();
+  await loadAgentStatus();
+}
+
 function renderAgentStatus(stats) {
   refs.agentStatus.innerHTML = "";
   if (!stats) {
@@ -818,6 +920,144 @@ async function runEpisode() {
   setStatus(`Episode finished. Total reward ${state.totalReward.toFixed(3)}.`);
 }
 
+async function runFullPipeline() {
+  const useApi = Boolean(refs.useApiCheckbox.checked);
+  const endpointCandidates = ["/pipeline/run", "/pipeline/run/", "/pipeline"];
+  let payload = null;
+  let lastError = "Pipeline endpoint unavailable";
+
+  for (const endpoint of endpointCandidates) {
+    try {
+      const resp = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ use_api: useApi }),
+      });
+
+      if (!resp.ok) {
+        let detail = `HTTP ${resp.status}`;
+        try {
+          const errorPayload = await resp.json();
+          if (errorPayload?.detail) {
+            detail = errorPayload.detail;
+          }
+        } catch (_e) {
+          // Ignore malformed error bodies.
+        }
+        lastError = `${endpoint}: ${detail}`;
+        continue;
+      }
+
+      payload = await resp.json();
+      break;
+    } catch (err) {
+      lastError = `${endpoint}: ${err.message}`;
+    }
+  }
+
+  if (!payload) {
+    // Compatibility mode for older backend builds without /pipeline routes.
+    const fallback = await runFullPipelineClientFallback(useApi);
+    refs.outcomeView.textContent = [
+      "Pipeline Status: Done (Compatibility Mode)",
+      "Order: task_1 -> task_2 -> task_3",
+      `Use API: ${useApi}`,
+      `Average Score: ${Number(fallback.average_score || 0).toFixed(3)}`,
+      "",
+      "Task Results:",
+      `- task_1: score=${Number(fallback.task_1.score || 0).toFixed(3)}, steps=${fallback.task_1.steps || 0}, done=${Boolean(fallback.task_1.done)}`,
+      `- task_2: score=${Number(fallback.task_2.score || 0).toFixed(3)}, steps=${fallback.task_2.steps || 0}, done=${Boolean(fallback.task_2.done)}`,
+      `- task_3: score=${Number(fallback.task_3.score || 0).toFixed(3)}, steps=${fallback.task_3.steps || 0}, done=${Boolean(fallback.task_3.done)}`,
+      "",
+      `Backend pipeline endpoint not found. Last error: ${lastError}`,
+      "Tip: deploy latest backend build to enable strict server-side handoff payloads.",
+    ].join("\n");
+    setStatus(`Pipeline finished in compatibility mode. Avg score ${Number(fallback.average_score || 0).toFixed(3)}.`);
+    return;
+  }
+
+  const t1 = payload?.results?.task_1 || {};
+  const t2 = payload?.results?.task_2 || {};
+  const t3 = payload?.results?.task_3 || {};
+  const avg = Number(payload?.average_score || 0).toFixed(3);
+
+  refs.outcomeView.textContent = [
+    "Pipeline Status: Done",
+    `Order: ${(payload?.pipeline_order || []).join(" -> ")}`,
+    `Use API: ${Boolean(payload?.use_api)}`,
+    `Average Score: ${avg}`,
+    "",
+    "Task Results:",
+    `- task_1: score=${Number(t1.score || 0).toFixed(3)}, steps=${t1.steps || 0}, done=${Boolean(t1.done)}`,
+    `- task_2: score=${Number(t2.score || 0).toFixed(3)}, steps=${t2.steps || 0}, done=${Boolean(t2.done)}`,
+    `- task_3: score=${Number(t3.score || 0).toFixed(3)}, steps=${t3.steps || 0}, done=${Boolean(t3.done)}`,
+    "",
+    "Handoff Snapshot:",
+    `- task1_to_task2 ticket_id: ${payload?.handoff?.task1_to_task2?.ticket?.ticket_id || "N/A"}`,
+    `- task2_to_task3 ticket_id: ${payload?.handoff?.task2_to_task3?.ticket?.ticket_id || "N/A"}`,
+    `- final order_id: ${payload?.handoff?.task2_to_task3?.ticket?.reported_order_id || "N/A"}`,
+  ].join("\n");
+
+  setStatus(`Pipeline finished. Avg score ${avg}.`);
+}
+
+async function runFullPipelineClientFallback(useApi) {
+  async function postJson(url, body) {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body || {}),
+    });
+    if (!resp.ok) {
+      let detail = `HTTP ${resp.status}`;
+      try {
+        const payload = await resp.json();
+        if (payload?.detail) {
+          detail = payload.detail;
+        }
+      } catch (_e) {
+        // Ignore malformed error bodies.
+      }
+      throw new Error(detail);
+    }
+    return resp.json();
+  }
+
+  async function runTask(taskId) {
+    await postJson(`/reset/${taskId}`, {});
+    let steps = 0;
+    let totalReward = 0;
+    let done = false;
+    const maxLoops = 20;
+
+    for (let i = 0; i < maxLoops; i += 1) {
+      if (done) {
+        break;
+      }
+      const payload = await postJson(`/auto-step/${taskId}`, { use_api: useApi });
+      const reward = Number(payload?.reward?.value || 0);
+      totalReward += reward;
+      done = Boolean(payload?.done);
+      steps += 1;
+    }
+
+    const score = taskId === "task_1" && steps > 0 ? totalReward / steps : totalReward;
+    return { score, steps, done };
+  }
+
+  const task1 = await runTask("task_1");
+  const task2 = await runTask("task_2");
+  const task3 = await runTask("task_3");
+  const averageScore = (Number(task1.score || 0) + Number(task2.score || 0) + Number(task3.score || 0)) / 3;
+
+  return {
+    task_1: task1,
+    task_2: task2,
+    task_3: task3,
+    average_score: averageScore,
+  };
+}
+
 async function submitManualAction() {
   if (!state.observation) {
     await apiReset();
@@ -868,6 +1108,19 @@ refs.runEpisodeBtn.addEventListener("click", async () => {
   }
 });
 
+refs.runPipelineBtn.addEventListener("click", async () => {
+  try {
+    refs.runPipelineBtn.disabled = true;
+    refs.runPipelineBtn.textContent = "Running...";
+    await runFullPipeline();
+  } catch (err) {
+    setStatus(`Pipeline error: ${err.message}`);
+  } finally {
+    refs.runPipelineBtn.disabled = false;
+    refs.runPipelineBtn.textContent = "Run Full Pipeline";
+  }
+});
+
 refs.supportSearchBtn.addEventListener("click", async () => {
   try {
     await runSupportSearch();
@@ -882,12 +1135,35 @@ refs.supportSearchClearBtn.addEventListener("click", () => {
   setStatus("Search cleared.");
 });
 
+refs.trainEpochBtn.addEventListener("click", async () => {
+  try {
+    refs.trainEpochBtn.disabled = true;
+    refs.trainEpochBtn.textContent = "Training...";
+    await runEpochTraining();
+  } catch (err) {
+    setStatus(`Training error: ${err.message}`);
+  } finally {
+    refs.trainEpochBtn.disabled = false;
+    refs.trainEpochBtn.textContent = "Train Again";
+  }
+});
+
+refs.refreshEpochBtn.addEventListener("click", async () => {
+  try {
+    await loadTrainingLogs();
+    setStatus("Epoch logs refreshed.");
+  } catch (err) {
+    setStatus(`Epoch log error: ${err.message}`);
+  }
+});
+
 (async function init() {
   refs.taskSelect.value = state.taskId;
   refs.supportSearchResults.innerHTML = '<div class="search-empty">Enter a query to search the support corpus.</div>';
   try {
     await loadSupportStats();
     await loadAgentStatus();
+    await loadTrainingLogs();
     await apiReset();
   } catch (err) {
     setStatus(`Boot failed: ${err.message}`);

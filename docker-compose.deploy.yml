@@ -1,0 +1,18 @@
+version: "3.9"
+
+services:
+  email-triage-env:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: email-triage-env:latest
+    container_name: email-triage-env
+    ports:
+      - "7860:7860"
+    environment:
+      PORT: "7860"
+      API_BASE_URL: ${API_BASE_URL:-}
+      MODEL_NAME: ${MODEL_NAME:-}
+      HF_TOKEN: ${HF_TOKEN:-}
+      USE_LLM_TASK1: ${USE_LLM_TASK1:-0}
+    restart: unless-stopped

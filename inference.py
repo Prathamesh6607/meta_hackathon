@@ -4,16 +4,18 @@ import json
 import re
 import requests
 from dotenv import load_dotenv
+from openai import OpenAI
 from env.rl_agent import Task1ReinforcementAgent
 
 load_dotenv()  # reads from .env file
 
-# Gemini configuration
-MODEL_NAME = os.environ.get('GEMINI_MODEL', os.environ.get('MODEL_NAME', 'gemini-1.5-flash'))
-HF_TOKEN = os.environ.get('HF_TOKEN', '')
-GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', os.environ.get('GOOGLE_API_KEY', ''))
-GEMINI_API_BASE = os.environ.get('GEMINI_API_BASE', 'https://generativelanguage.googleapis.com/v1beta')
-USE_GEMINI_TASK1 = os.environ.get('USE_GEMINI_TASK1', os.environ.get('USE_GEMINI', '0')) == '1'
+# Required Round-1 configuration
+API_BASE_URL = os.environ.get('API_BASE_URL', '').strip()
+MODEL_NAME = os.environ.get('MODEL_NAME', '').strip()
+HF_TOKEN = os.environ.get('HF_TOKEN', '').strip()
+
+# LLM usage is optional for the baseline; deterministic policy stays default.
+USE_LLM_TASK1 = os.environ.get('USE_LLM_TASK1', '0') == '1'
 TASK1_AGENT = Task1ReinforcementAgent()
 
 # Where your environment is running
@@ -106,7 +108,7 @@ def infer_in_stock(result: dict) -> int:
     return 0
 
 
-def call_gemini(messages: list, step_num: int) -> str:
+def call_external_llm(messages: list, step_num: int) -> str:
     transcript = []
     for msg in messages:
         role = msg.get('role', 'user').upper()
@@ -114,26 +116,27 @@ def call_gemini(messages: list, step_num: int) -> str:
         transcript.append(f'{role}:\n{content}')
     prompt = '\n\n'.join(transcript)
 
+    # All LLM calls go through OpenAI-compatible client as required.
+    if not API_BASE_URL or not MODEL_NAME or not HF_TOKEN:
+        return ''
+
+    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+
     try:
-        response = requests.post(
-            f'{GEMINI_API_BASE}/models/{MODEL_NAME}:generateContent',
-            params={'key': GEMINI_API_KEY},
-            json={
-                'contents': [{'role': 'user', 'parts': [{'text': prompt}]}],
-                'generationConfig': {'temperature': TEMPERATURE, 'maxOutputTokens': 512},
-            },
-            timeout=60,
+        completion = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{'role': 'user', 'content': prompt}],
+            temperature=TEMPERATURE,
+            max_tokens=512,
         )
-        response.raise_for_status()
-        payload = response.json()
-        candidates = payload.get('candidates', [])
-        if not candidates:
+        choices = getattr(completion, 'choices', [])
+        if not choices:
             return ''
-        parts = candidates[0].get('content', {}).get('parts', [])
-        texts = [p.get('text', '') for p in parts if isinstance(p, dict)]
-        return '\n'.join([t for t in texts if t]).strip()
+        message = choices[0].message
+        content = getattr(message, 'content', '')
+        return (content or '').strip()
     except Exception as exc:
-        print(f'  Gemini error at step {step_num}: {exc}')
+        print(f'[STEP] task=runtime step={step_num} action=llm_call reward=0.0000 done=False source=llm_error error={json.dumps(str(exc))}')
         return ''
 
 
@@ -182,8 +185,8 @@ def sanitize_task_1_action(candidate: dict, current_email: dict) -> dict:
     return {'action_type': 'classify_email', 'category': category, 'priority': priority, 'order_id': order_id}
 
 
-def choose_task_1_action(current_email: dict, step_num: int, use_gemini: bool) -> dict:
-    if not use_gemini:
+def choose_task_1_action(current_email: dict, step_num: int, use_llm: bool) -> dict:
+    if not use_llm:
         return choose_task_1_action_heuristic(current_email)
     prompt = (
         'Extract support triage fields and return JSON only.\n'
@@ -194,7 +197,7 @@ def choose_task_1_action(current_email: dict, step_num: int, use_gemini: bool) -
         f'Subject: {current_email.get("subject", "")}\n'
         f'Body: {current_email.get("body", "")}\n'
     )
-    llm_text = call_gemini(
+    llm_text = call_external_llm(
         messages=[
             {'role': 'system', 'content': 'Return JSON only.'},
             {'role': 'user', 'content': prompt},
@@ -258,13 +261,15 @@ def choose_task_3_action(ticket: dict, traces: list) -> dict:
     return {'action_type': 'issue_refund', 'order_id': order_id, 'reason': 'replacement_out_of_stock'}
 
 
-def choose_action(task_id: str, current_email: dict, ticket: dict, traces: list, context: dict, step_num: int, use_gemini_task1: bool) -> dict:
+def choose_action(task_id: str, current_email: dict, ticket: dict, traces: list, context: dict, step_num: int, use_llm_task1: bool) -> dict:
     if task_id == 'task_1':
+        if use_llm_task1:
+            return choose_task_1_action(current_email=current_email, step_num=step_num, use_llm=True)
         decision = TASK1_AGENT.choose_action(
             current_email=current_email,
-            api_key=GEMINI_API_KEY if use_gemini_task1 else None,
+            api_key=None,
             model_name=MODEL_NAME,
-            allow_gemini_fallback=use_gemini_task1,
+            allow_external_fallback=False,
         )
         return decision.action
     if task_id == 'task_2':
@@ -284,9 +289,7 @@ def coerce_allowed_action(action: dict, available_actions: list, fallback_action
 
 
 def run_task(task_id: str) -> float:
-    print(f'\n{"="*50}')
-    print(f'Running {task_id}')
-    print(f'{"="*50}')
+    print(f'[START] task={task_id} env_url={ENV_URL} model={MODEL_NAME or "deterministic"}')
 
     response = requests.post(f'{ENV_URL}/reset/{task_id}', timeout=30)
     response.raise_for_status()
@@ -319,7 +322,7 @@ def run_task(task_id: str) -> float:
             traces=traces,
             context=context,
             step_num=step_num,
-            use_gemini_task1=False,
+            use_llm_task1=False,
         )
         action = choose_action(
             task_id=task_id,
@@ -328,11 +331,9 @@ def run_task(task_id: str) -> float:
             traces=traces,
             context=context,
             step_num=step_num,
-            use_gemini_task1=USE_GEMINI_TASK1,
+            use_llm_task1=USE_LLM_TASK1,
         )
         action = coerce_allowed_action(action, obs.get('available_actions') or [], deterministic_fallback)
-
-        print(f'  Step {step_num:2d}: {action.get("action_type", "?")} ', end='')
 
         sent_action = action
         try:
@@ -352,24 +353,25 @@ def run_task(task_id: str) -> float:
         done = bool(result.get('done', False))
         obs = result.get('observation', {}) or {}
 
-        print(f'| reward {reward:.3f} | done={done}')
+        print(
+            f'[STEP] task={task_id} step={step_num} action={sent_action.get("action_type", "unknown")} '
+            f'reward={float(reward):.4f} done={done} source=policy'
+        )
         if done:
-            print('  Episode complete.')
             break
 
     normalized_reward = total_reward
     if task_id == 'task_1' and steps_executed > 0:
         normalized_reward = total_reward / float(steps_executed)
-    print(f'  Final reward for {task_id}: {normalized_reward:.4f}')
+    print(f'[END] task={task_id} score={normalized_reward:.4f} steps={steps_executed}')
     return normalized_reward
 
 
 def main():
-    print('Email Triage OpenEnv - Baseline Inference')
-    print(f'Model: {MODEL_NAME}')
-    print(f'Environment: {ENV_URL}')
-    print(f'Use Gemini fallback for Task 1: {USE_GEMINI_TASK1}')
-    print(f'Task 1 policy file: {TASK1_AGENT.policy_path}')
+    print(
+        f'[START] task=all env_url={ENV_URL} model={MODEL_NAME or "deterministic"} '
+        f'api_base_url={API_BASE_URL or "unset"} use_llm_task1={USE_LLM_TASK1}'
+    )
 
     try:
         health = requests.get(f'{ENV_URL}/', timeout=5)
@@ -386,13 +388,11 @@ def main():
     for task in TASKS:
         scores[task] = run_task(task)
 
-    print('\n' + '=' * 50)
-    print('FINAL BASELINE SCORES:')
+    print('[END] task=all ' + ' '.join([f'{task}={score:.4f}' for task, score in scores.items()]))
     for task, score in scores.items():
-        print(f'  {task}: {score:.4f}')
+        print(f'[STEP] task=summary step=0 action=report reward={score:.4f} done=True source={task}')
     avg = sum(scores.values()) / len(scores)
-    print(f'  Average: {avg:.4f}')
-    print('=' * 50)
+    print(f'[END] task=summary score={avg:.4f} steps={len(scores)}')
 
 
 if __name__ == '__main__':

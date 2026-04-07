@@ -104,6 +104,54 @@ h1 {
   backdrop-filter: blur(4px);
 }
 
+.problem-copy {
+  margin: 0 0 12px;
+  line-height: 1.5;
+}
+
+.pros-cons-grid {
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+}
+
+.mini-panel {
+  padding: 12px;
+  margin: 0;
+}
+
+.mini-panel h3 {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+.fact-list {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+}
+
+.diagram-figure {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.diagram-image {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid rgba(8, 102, 255, 0.2);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.08);
+}
+
+.diagram-caption {
+  margin: 0;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.76rem;
+  opacity: 0.8;
+}
+
 .controls {
   display: grid;
   gap: 12px;
@@ -196,6 +244,39 @@ textarea {
 
 .agent-actions {
   margin-top: 12px;
+}
+
+.training-controls {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.epoch-log-list {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+}
+
+.epoch-log-item {
+  border-left: 4px solid var(--meta);
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+
+.epoch-log-item .head {
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.epoch-log-item .desc {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.76rem;
+  margin-top: 3px;
+  opacity: 0.86;
 }
 
 .btn-accent {
@@ -508,6 +589,10 @@ textarea {
   .agent-status,
   .log-grid {
     grid-template-columns: 1fr;
+  }
+
+  .diagram-caption {
+    font-size: 0.73rem;
   }
 
   .agent-status-head {
