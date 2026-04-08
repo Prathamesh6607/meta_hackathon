@@ -51,7 +51,7 @@ In the Self-Learning Module, call out these fields and what they mean:
 - Epoch Run should increase each time a new episode starts.
 - Log Entries should increase as learning events are recorded.
 - Recommended Model can show `TF-IDF + Logistic Regression`.
-- Model In Use can show `Online linear policy with heuristic features and Gemini fallback`.
+- Model In Use can show `Online linear policy with heuristic features`.
 - Using Recommended can show `No` when the active model differs from the recommended baseline.
 - Policy File should show `task1_agent_policy.json`, proving persistence across runs.
 - Category Bias and Priority Bias values should be non-zero after a few learning updates.

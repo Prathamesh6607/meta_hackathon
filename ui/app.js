@@ -42,7 +42,6 @@ const refs = {
   trainingSummary: document.getElementById("trainingSummary"),
   epochCountInput: document.getElementById("epochCountInput"),
   trainEpochBtn: document.getElementById("trainEpochBtn"),
-  refreshEpochBtn: document.getElementById("refreshEpochBtn"),
   epochLogList: document.getElementById("epochLogList"),
   submitActionBtn: document.getElementById("submitActionBtn"),
   statusText: document.getElementById("statusText"),
@@ -1145,15 +1144,6 @@ refs.trainEpochBtn.addEventListener("click", async () => {
   } finally {
     refs.trainEpochBtn.disabled = false;
     refs.trainEpochBtn.textContent = "Train Again";
-  }
-});
-
-refs.refreshEpochBtn.addEventListener("click", async () => {
-  try {
-    await loadTrainingLogs();
-    setStatus("Epoch logs refreshed.");
-  } catch (err) {
-    setStatus(`Epoch log error: ${err.message}`);
   }
 });
 

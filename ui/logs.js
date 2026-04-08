@@ -7,7 +7,6 @@ const refs = {
   roundLogs: document.getElementById("roundLogs"),
   roundEpochCount: document.getElementById("roundEpochCount"),
   trainAgainBtn: document.getElementById("trainAgainBtn"),
-  refreshRoundBtn: document.getElementById("refreshRoundBtn"),
 };
 
 const state = {
@@ -209,6 +208,17 @@ async function trainAgain() {
   if (!resp.ok) {
     throw new Error(`Training HTTP ${resp.status}`);
   }
+  const payload = await resp.json();
+  renderRoundSummary({
+    summary: {
+      epochs: Array.isArray(payload?.entries) ? payload.entries.length : 0,
+      latest_epoch: payload?.latest?.epoch ?? "-",
+      best_average_score: Array.isArray(payload?.entries)
+        ? payload.entries.reduce((max, item) => Math.max(max, Number(item?.average_score || 0)), 0)
+        : 0,
+    },
+  });
+  renderRoundLogs(Array.isArray(payload?.entries) ? payload.entries : []);
   await loadLogs();
   await loadRoundLogs();
 }
@@ -238,14 +248,6 @@ refs.refreshBtn.addEventListener("click", async () => {
     await loadLogs();
   } catch (err) {
     refs.logList.innerHTML = `<div class="search-empty">Failed to load logs: ${err.message}</div>`;
-  }
-});
-
-refs.refreshRoundBtn.addEventListener("click", async () => {
-  try {
-    await loadRoundLogs();
-  } catch (err) {
-    refs.roundLogs.innerHTML = `<div class="search-empty">Failed to load round logs: ${err.message}</div>`;
   }
 });
 

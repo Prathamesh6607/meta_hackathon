@@ -7,7 +7,7 @@ import re
 from typing import Any, Optional
 
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import requests
@@ -694,7 +694,12 @@ def _run_training_episode(task_id: str, use_external_api: bool = False) -> dict[
     }
 
 
-@app.get('/')
+@app.get('/', include_in_schema=False)
+def root_redirect():
+    return RedirectResponse(url='/ui', status_code=307)
+
+
+@app.get('/health')
 def health():
     return {'status': 'ok', 'environment': 'email-triage-env', 'tasks': list(envs.keys())}
 
