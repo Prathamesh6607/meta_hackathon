@@ -75,6 +75,15 @@ class PipelineRunRequest(BaseModel):
     use_api: bool = False
 
 
+class OpenEnvResetRequest(BaseModel):
+    task_id: Optional[str] = 'task_1'
+
+
+class OpenEnvStepRequest(BaseModel):
+    task_id: str = 'task_1'
+    action: Action
+
+
 def _as_int(value, default=0):
     try:
         return int(value)
@@ -620,6 +629,13 @@ def _next_epoch_index() -> int:
     return int(last.get('epoch', 0) or 0) + 1
 
 
+def _resolve_task_id(task_id: Optional[str], default_task: str = 'task_1') -> str:
+    candidate = str(task_id or default_task)
+    if candidate not in envs:
+        raise HTTPException(status_code=404, detail=f'Task {candidate} not found')
+    return candidate
+
+
 def _choose_auto_action(task_id: str, obs: dict[str, Any], use_external_api: bool = False) -> tuple[dict[str, Any], str, Optional[float]]:
     current_email = obs.get('current_email') or {}
     ticket = obs.get('ticket') or {}
@@ -821,21 +837,31 @@ def pipeline_run(request: PipelineRunRequest):
 
 @app.post('/reset/{task_id}')
 def reset(task_id: str):
-    if task_id not in envs:
-        raise HTTPException(status_code=404, detail=f'Task {task_id} not found')
-    obs = envs[task_id].reset()
+    resolved_task = _resolve_task_id(task_id)
+    obs = envs[resolved_task].reset()
     return obs.model_dump()
+
+
+@app.post('/openenv/reset')
+@app.post('/openenv/reset/')
+@app.post('/openenv/reset/{task_id}')
+def openenv_reset(task_id: Optional[str] = None, request: Optional[OpenEnvResetRequest] = None):
+    resolved_task = _resolve_task_id(task_id or (request.task_id if request else None))
+    obs = envs[resolved_task].reset()
+    return {
+        'task_id': resolved_task,
+        'observation': obs.model_dump(),
+    }
 
 
 @app.post('/step/{task_id}')
 def step(task_id: str, action: Action):
-    if task_id not in envs:
-        raise HTTPException(status_code=404, detail=f'Task {task_id} not found')
+    resolved_task = _resolve_task_id(task_id)
     try:
-        pre_step_obs = envs[task_id]._build_observation().model_dump()
-        result = envs[task_id].step(action)
+        pre_step_obs = envs[resolved_task]._build_observation().model_dump()
+        result = envs[resolved_task].step(action)
         obs_dump = result['observation'].model_dump()
-        if task_id == 'task_1':
+        if resolved_task == 'task_1':
             reward_payload = result['reward'].model_dump()
             reward_payload['context'] = pre_step_obs.get('context') or {}
             reward_payload['source'] = 'manual'
@@ -845,10 +871,16 @@ def step(task_id: str, action: Action):
             'reward': result['reward'].model_dump(),
             'done': result['done'],
             'info': result['info'],
-            'support_recommendation': _build_support_recommendation(task_id, obs_dump, action),
+            'support_recommendation': _build_support_recommendation(resolved_task, obs_dump, action),
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.post('/openenv/step')
+@app.post('/openenv/step/')
+def openenv_step(request: OpenEnvStepRequest):
+    return step(task_id=request.task_id, action=request.action)
 
 
 @app.post('/auto-step/{task_id}')
